@@ -15,7 +15,7 @@ local AmmoUpdate = GameEvents:WaitForChild("AmmoUpdate")
 local playerGuns = GunDataModule.PlayerGuns
 
 local AMMO_AMOUNT = 30  -- One magazine worth
-local DROP_CHANCE = 0.05  -- 5% chance to drop ammo on kill
+local DROP_CHANCE = 0.20  -- 20% chance to drop ammo on kill
 local PICKUP_LIFETIME = 30  -- Seconds before pickup disappears if not collected
 
 -- Create an ammo pickup box at a position (called when zombie dies)
@@ -31,7 +31,7 @@ local function createAmmoPickup(position)
 	box.Color = Color3.fromRGB(100, 70, 30)
 	box.Material = Enum.Material.Wood
 	box.Anchored = true
-	box.CanCollide = true
+	box.CanCollide = false  -- Allow player to walk through
 	box.Parent = pickup
 
 	-- Ammo symbol (yellow cross)
@@ -137,9 +137,18 @@ local function createAmmoPickup(position)
 
 		local gunData = playerGuns[player]
 		if gunData then
-			gunData.reserve = gunData.reserve + AMMO_AMOUNT
-			AmmoUpdate:FireClient(player, gunData.ammo, gunData.reserve)
-			print(player.Name .. " picked up ammo drop! Reserve: " .. gunData.reserve)
+			local weaponIndex = gunData.currentWeapon
+			local weapon = GunDataModule.GetWeapon(weaponIndex)
+
+			-- Only add ammo to guns (not melee)
+			if weapon and weapon.type == "gun" then
+				local weaponAmmo = gunData.weapons[weaponIndex]
+				weaponAmmo.reserve = weaponAmmo.reserve + AMMO_AMOUNT
+				AmmoUpdate:FireClient(player, weaponAmmo.ammo, weaponAmmo.reserve)
+				print(player.Name .. " picked up ammo! +" .. AMMO_AMOUNT .. " for " .. weapon.name)
+			else
+				print(player.Name .. " picked up ammo but is using melee")
+			end
 		end
 
 		-- Remove pickup
@@ -169,4 +178,4 @@ _G.SpawnAmmoDrop = function(position)
 	return false
 end
 
-print("AmmoPickups: Ready! Ammo will drop from zombies (5% chance)")
+print("AmmoPickups: Ready! Ammo will drop from zombies (20% chance)")

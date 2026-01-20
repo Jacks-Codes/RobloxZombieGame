@@ -36,7 +36,7 @@ local weaponKeys = {
 }
 
 local weaponNames = {"Knife", "Pistol", "SMG", "Shotgun", "Rifle", "LMG"}
-local weaponUnlocks = {0, 0, 20, 50, 100, 200}
+local weaponUnlocks = {0, 0, 10, 25, 50, 100}
 
 -- Create UI
 local screen = Instance.new("ScreenGui")
@@ -376,6 +376,26 @@ if WeaponUpdate then
 		updateWeaponSlots()
 	end)
 end
+
+-- Reset UI to defaults (called on respawn)
+local function resetUI()
+	currentWeaponIndex = 2
+	currentWeaponName = "Pistol"
+	currentWeaponType = "gun"
+
+	weaponLabel.Text = "PISTOL"
+	ammoText.Text = "12"
+	reserveText.Text = "36"
+	ammoText.TextColor3 = Color3.new(1, 1, 1)
+
+	updateWeaponSlots()
+end
+
+-- Handle respawn
+player.CharacterAdded:Connect(function()
+	task.wait(0.1)
+	resetUI()
+end)
 
 -- Initialize weapon slots
 updateWeaponSlots()

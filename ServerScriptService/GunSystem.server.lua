@@ -396,4 +396,4 @@ AddAmmo.OnServerEvent:Connect(function(player, amount)
 end)
 
 print("GunSystem: Ready!")
-print("  Weapons: Knife, Pistol (start), SMG (20 kills), Shotgun (50), Rifle (100), LMG (200)")
+print("  Weapons: Knife, Pistol (start), SMG (10 kills), Shotgun (25), Rifle (50), LMG (100)")

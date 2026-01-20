@@ -47,7 +47,8 @@ local GROUND_Y = 0
 
 -- Spawn distance from players
 local SPAWN_NEAR_PLAYER = true  -- If true, spawns within range of players
-local SPAWN_DISTANCE = 8        -- Studs from player to spawn zombies
+local SPAWN_MIN_DISTANCE = 20   -- Minimum studs from player
+local SPAWN_MAX_DISTANCE = 40   -- Maximum studs from player
 local SPAWN_AT_PLAYER_Y = true  -- Spawn at same Y level as player
 --============================================
 
@@ -251,10 +252,19 @@ local function createZombie(position, roundNumber)
 		end
 	end)
 
+	-- Track if this zombie's death was already counted
+	local deathCounted = false
+
 	-- Handle death
 	humanoid.Died:Connect(function()
 		aiConnection:Disconnect()
 		moveConnection:Disconnect()
+
+		-- Prevent double-counting (e.g., from cleanup destroy)
+		if deathCounted or isIntermission then
+			return
+		end
+		deathCounted = true
 
 		-- Drop ammo at zombie's position
 		if rootPart and _G.SpawnAmmoDrop then
@@ -365,9 +375,9 @@ local function getRandomSpawnPosition()
 			if char then
 				local rootPart = char:FindFirstChild("HumanoidRootPart")
 				if rootPart then
-					-- Spawn within SPAWN_DISTANCE of player
+					-- Spawn between min and max distance from player
 					local angle = math.random() * math.pi * 2
-					local distance = math.random(1, SPAWN_DISTANCE)
+					local distance = math.random(SPAWN_MIN_DISTANCE, SPAWN_MAX_DISTANCE)
 					local x = rootPart.Position.X + math.cos(angle) * distance
 					local z = rootPart.Position.Z + math.sin(angle) * distance
 

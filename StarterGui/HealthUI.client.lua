@@ -4,8 +4,6 @@ print("HealthUI: Loading...")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
 
 -- Create UI
 local screen = Instance.new("ScreenGui")
@@ -47,8 +45,13 @@ healthText.Font = Enum.Font.GothamBold
 healthText.TextStrokeTransparency = 0.5
 healthText.Parent = healthBg
 
+-- Current connection (to disconnect on respawn)
+local healthConnection = nil
+
 -- Update health display
-local function updateHealth()
+local function updateHealth(humanoid)
+	if not humanoid then return end
+
 	local health = humanoid.Health
 	local maxHealth = humanoid.MaxHealth
 	local percent = math.clamp(health / maxHealth, 0, 1)
@@ -66,17 +69,38 @@ local function updateHealth()
 	end
 end
 
--- Listen for health changes
-humanoid.HealthChanged:Connect(updateHealth)
+-- Setup health tracking for a character
+local function setupCharacter(character)
+	if not character then return end
+
+	-- Disconnect old connection
+	if healthConnection then
+		healthConnection:Disconnect()
+		healthConnection = nil
+	end
+
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	if not humanoid then return end
+
+	-- Connect to health changes
+	healthConnection = humanoid.HealthChanged:Connect(function()
+		updateHealth(humanoid)
+	end)
+
+	-- Initial update
+	updateHealth(humanoid)
+end
+
+-- Handle current character
+if player.Character then
+	setupCharacter(player.Character)
+end
 
 -- Handle respawn
-player.CharacterAdded:Connect(function(newChar)
-	character = newChar
-	humanoid = character:WaitForChild("Humanoid")
-	humanoid.HealthChanged:Connect(updateHealth)
-	updateHealth()
+player.CharacterAdded:Connect(function(character)
+	-- Small delay to ensure character is fully loaded
+	task.wait(0.1)
+	setupCharacter(character)
 end)
 
-updateHealth()
-
-print("✓ Health UI ready!")
+print("HealthUI: Ready!")
