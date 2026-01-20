@@ -1,0 +1,3 @@
+-- Gun View Model - DISABLED
+-- Using pre-made gun models from Studio instead
+-- Delete this file if not needed

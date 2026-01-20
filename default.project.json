@@ -1,0 +1,57 @@
+{
+  "name": "ZombieGame",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "ServerScriptService"
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$path": "StarterPlayer"
+    },
+
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$path": "StarterGui"
+    },
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+
+      "GameEvents": {
+        "$className": "Folder",
+
+        "ShootGun": {
+          "$className": "RemoteEvent"
+        },
+
+        "AmmoUpdate": {
+          "$className": "RemoteEvent"
+        },
+
+        "ReloadGun": {
+          "$className": "RemoteEvent"
+        },
+
+        "RoundUpdate": {
+          "$className": "RemoteEvent"
+        },
+
+        "ZombieCountUpdate": {
+          "$className": "RemoteEvent"
+        },
+
+        "PlayerHealthUpdate": {
+          "$className": "RemoteEvent"
+        },
+
+        "AddAmmo": {
+          "$className": "RemoteEvent"
+        }
+      }
+    }
+  }
+}

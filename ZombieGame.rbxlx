@@ -1,0 +1,116 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="1">
+      <Properties>
+        <string name="Name">GameEvents</string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="2">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+  </Item>
+  <Item class="StarterPlayer" referent="3">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="Folder" referent="4">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="5">
+        <Properties>
+          <string name="Name">Camera</string>
+          <string name="Source"><![CDATA[-- Simple First-Person Camera
+-- Step 1: Just get the camera working
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Lock mouse
+UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+
+-- Camera angles
+local angleX = 0
+local angleY = 0
+
+-- Mouse input
+UserInputService.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		angleY = angleY - input.Delta.X * 0.4
+		angleX = math.clamp(angleX - input.Delta.Y * 0.4, -80, 80)
+	end
+end)
+
+-- Update camera every frame
+RunService.RenderStepped:Connect(function()
+	local head = character:FindFirstChild("Head")
+	if head then
+		local cameraCFrame = CFrame.new(head.Position)
+			* CFrame.Angles(0, math.rad(angleY), 0)
+			* CFrame.Angles(math.rad(angleX), 0, 0)
+
+		camera.CFrame = cameraCFrame
+		camera.CameraType = Enum.CameraType.Scriptable
+	end
+end)
+
+print("✓ Camera loaded!")
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="6">
+        <Properties>
+          <string name="Name">TestUI</string>
+          <string name="Source"><![CDATA[-- Simple Test UI
+-- Shows that scripts are loading
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create screen
+local screen = Instance.new("ScreenGui")
+screen.Name = "TestUI"
+screen.ResetOnSpawn = false
+screen.Parent = playerGui
+
+-- Status message
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(0, 400, 0, 100)
+status.Position = UDim2.new(0.5, -200, 0, 20)
+status.BackgroundColor3 = Color3.new(0, 0, 0)
+status.BackgroundTransparency = 0.5
+status.TextColor3 = Color3.new(1, 1, 1)
+status.TextSize = 24
+status.Font = Enum.Font.GothamBold
+status.Text = "✓ Game Loading...\nMove mouse to test camera"
+status.TextWrapped = true
+status.Parent = screen
+
+-- Corner
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = status
+
+-- Update after a moment
+task.wait(1)
+status.Text = "✓ Camera Active!\nMove mouse to look around"
+status.BackgroundColor3 = Color3.new(0, 0.5, 0)
+
+print("✓ Test UI loaded!")
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>
