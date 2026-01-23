@@ -22,10 +22,11 @@ local SLIDE_CAMERA_DROP = 2
 -- Grapple settings
 local GRAPPLE_KEY = Enum.KeyCode.E
 local GRAPPLE_RANGE = 30        -- Max distance to grapple
-local GRAPPLE_MIN_HEIGHT = 6    -- Min height to grapple (below this, just jump)
+local GRAPPLE_MIN_HEIGHT = 2    -- Min height to grapple a ledge
 local GRAPPLE_MAX_HEIGHT = 10   -- Max height above player
 local GRAPPLE_SPEED = 12        -- How fast you pull (slow, like pulling yourself up)
 local GRAPPLE_COOLDOWN = 0.5    -- Seconds between grapples
+local GRAPPLE_HANG_OFFSET = 1.5 -- How far below the ledge to hang
 
 -- Slide settings
 local SLIDE_SPEED_THRESHOLD = 20  -- Must be moving this fast to slide (requires sprinting)
@@ -123,128 +124,148 @@ local function doGrapple()
 
 	local result = workspace:Raycast(rayOrigin, rayDirection, rayParams)
 
-	if result then
-		-- Found a grapple point!
-		local grapplePoint = result.Position
-		local distance = (grapplePoint - rootPart.Position).Magnitude
-		local heightDiff = grapplePoint.Y - rootPart.Position.Y
-
-		-- Check if target is too low (just jump instead)
-		if heightDiff < GRAPPLE_MIN_HEIGHT then
-			print("Too low to grapple (" .. math.floor(heightDiff) .. " studs) - jumping!")
-			if humanoid.FloorMaterial ~= Enum.Material.Air then
-				humanoid.Jump = true
-			end
-			return
-		end
-
-		-- Check if target is too high
-		if heightDiff > GRAPPLE_MAX_HEIGHT then
-			print("Too high to grapple! (" .. math.floor(heightDiff) .. " studs up, max is " .. GRAPPLE_MAX_HEIGHT .. ")")
-			-- Just jump instead
-			if humanoid.FloorMaterial ~= Enum.Material.Air then
-				humanoid.Jump = true
-			end
-			return
-		end
-
-		-- Check if platform is wide enough to stand on (at least 2 studs)
-		local hitPart = result.Instance
-		if hitPart and hitPart:IsA("BasePart") then
-			local partSize = hitPart.Size
-			local minSize = math.min(partSize.X, partSize.Z)
-			if minSize < 2 then
-				print("Platform too small to grapple to! (size: " .. math.floor(minSize) .. ")")
-				if humanoid.FloorMaterial ~= Enum.Material.Air then
-					humanoid.Jump = true
-				end
-				return
-			end
-		end
-
-		-- Calculate landing point ABOVE the ledge (so we land on top)
-		local landingPoint = grapplePoint + Vector3.new(0, 3, 0)  -- 3 studs above hit point
-
-		-- Also move slightly forward onto the platform
-		local forwardDir = (grapplePoint - rootPart.Position)
-		forwardDir = Vector3.new(forwardDir.X, 0, forwardDir.Z).Unit
-		landingPoint = landingPoint + forwardDir * 2  -- 2 studs forward onto platform
-
-		print("GRAPPLING! Distance: " .. math.floor(distance) .. ", Height: " .. math.floor(heightDiff))
-		isGrappling = true
-		canGrapple = false
-
-		-- Disable normal movement during grapple
-		humanoid.WalkSpeed = 0
-
-		-- Camera effects - pull back and tilt
-		_G.IsGrappling = true
-		_G.GrappleCameraTilt = -15
-
-		-- Create pull force
-		local bodyVelocity = Instance.new("BodyVelocity")
-		bodyVelocity.Name = "GrappleForce"
-		bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-		bodyVelocity.Parent = rootPart
-
-		-- Pull toward landing point (above the ledge)
-		local startTime = tick()
-		local totalDistance = (landingPoint - rootPart.Position).Magnitude
-		local maxGrappleTime = totalDistance / GRAPPLE_SPEED + 1
-
-		local grappleConnection
-		grappleConnection = RunService.Heartbeat:Connect(function()
-			local elapsed = tick() - startTime
-			local currentPos = rootPart.Position
-			local toTarget = landingPoint - currentPos
-			local currentDistance = toTarget.Magnitude
-
-			-- Check if reached landing point or timed out
-			if currentDistance < 2 or elapsed > maxGrappleTime then
-				-- End grapple
-				grappleConnection:Disconnect()
-				bodyVelocity:Destroy()
-
-				isGrappling = false
-				_G.IsGrappling = false
-				_G.GrappleCameraTilt = 0
-
-				-- Final boost forward and up to land on platform
-				rootPart.AssemblyLinearVelocity = Vector3.new(
-					forwardDir.X * 10,
-					5,
-					forwardDir.Z * 10
-				)
-
-				-- Restore speed
-				if isSprinting then
-					humanoid.WalkSpeed = SPRINT_SPEED
-				else
-					humanoid.WalkSpeed = WALK_SPEED
-				end
-
-				-- Cooldown
-				task.delay(GRAPPLE_COOLDOWN, function()
-					canGrapple = true
-				end)
-				return
-			end
-
-			-- Pull toward landing point
-			local direction = toTarget.Unit
-			bodyVelocity.Velocity = direction * GRAPPLE_SPEED
-
-			-- Camera tilt based on progress
-			local progress = 1 - (currentDistance / totalDistance)
-			_G.GrappleCameraTilt = -15 + (progress * 20)
-		end)
-	else
-		-- No grapple point found - just jump
+	if not result then
 		print("No grapple point - jumping!")
 		if humanoid.FloorMaterial ~= Enum.Material.Air then
 			humanoid.Jump = true
 		end
+		return
 	end
+
+	local hitPart = result.Instance
+	if not hitPart or not hitPart:IsA("BasePart") then
+		return
+	end
+
+	-- Check if platform is wide enough to stand on (at least 2 studs)
+	local partSize = hitPart.Size
+	local minSize = math.min(partSize.X, partSize.Z)
+	if minSize < 2 then
+		print("Platform too small to grapple to! (size: " .. math.floor(minSize) .. ")")
+		return
+	end
+
+	-- Find top of the ledge by raycasting down from above the hit point
+	local toPlayer = (rootPart.Position - result.Position).Unit
+	local ledgeCheckOrigin = result.Position + Vector3.new(0, GRAPPLE_MAX_HEIGHT + 4, 0) + toPlayer * 2
+	local ledgeCheckDir = Vector3.new(0, -(GRAPPLE_MAX_HEIGHT + 8), 0)
+
+	local ledgeParams = RaycastParams.new()
+	ledgeParams.FilterDescendantsInstances = {char}
+	ledgeParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local ledgeHit = workspace:Raycast(ledgeCheckOrigin, ledgeCheckDir, ledgeParams)
+	if not ledgeHit or ledgeHit.Normal.Y < 0.5 then
+		print("No valid ledge top found")
+		return
+	end
+
+	local ledgeTop = ledgeHit.Position
+	local heightDiff = ledgeTop.Y - rootPart.Position.Y
+
+	if heightDiff < GRAPPLE_MIN_HEIGHT then
+		print("Too low to grapple (" .. math.floor(heightDiff) .. " studs)")
+		return
+	end
+
+	if heightDiff > GRAPPLE_MAX_HEIGHT then
+		print("Too high to grapple! (" .. math.floor(heightDiff) .. " studs up, max is " .. GRAPPLE_MAX_HEIGHT .. ")")
+		return
+	end
+
+	-- Determine pull direction (onto the platform)
+	local wallNormal = result.Normal
+	local horizontalForward
+	if math.abs(wallNormal.Y) < 0.5 then
+		horizontalForward = Vector3.new(-wallNormal.X, 0, -wallNormal.Z).Unit
+	else
+		local camForward = camera.CFrame.LookVector
+		horizontalForward = Vector3.new(camForward.X, 0, camForward.Z).Unit
+	end
+
+	-- Positions for hang and pull-up
+	local hangPosition = ledgeTop + Vector3.new(0, -GRAPPLE_HANG_OFFSET, 0) - horizontalForward * 0.5
+	local standPosition = ledgeTop + Vector3.new(0, 2.5, 0) + horizontalForward * 2
+
+	-- Check for space to stand on top
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterDescendantsInstances = {char}
+	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+	local clearanceBox = workspace:GetPartBoundsInBox(CFrame.new(standPosition), Vector3.new(3, 5, 3), overlapParams)
+	if #clearanceBox > 0 then
+		print("Not enough clearance to pull up")
+		return
+	end
+
+	print("GRAPPLING! Height: " .. math.floor(heightDiff))
+	isGrappling = true
+	canGrapple = false
+
+	-- Disable normal movement during grapple
+	humanoid.WalkSpeed = 0
+	humanoid.AutoRotate = false
+	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+
+	-- Camera effects - pull back and tilt
+	_G.IsGrappling = true
+	_G.GrappleCameraTilt = -15
+
+	-- Smooth align for hang + pull-up
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "GrappleAttachment"
+	attachment.Parent = rootPart
+
+	local alignPos = Instance.new("AlignPosition")
+	alignPos.Name = "GrappleAlignPosition"
+	alignPos.Attachment0 = attachment
+	alignPos.Responsiveness = 35
+	alignPos.MaxForce = 50000
+	alignPos.Position = hangPosition
+	alignPos.Parent = rootPart
+
+	local alignOri = Instance.new("AlignOrientation")
+	alignOri.Name = "GrappleAlignOrientation"
+	alignOri.Attachment0 = attachment
+	alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	alignOri.Responsiveness = 20
+	alignOri.MaxTorque = 50000
+	alignOri.CFrame = CFrame.lookAt(Vector3.new(), -horizontalForward)
+	alignOri.Parent = rootPart
+
+	-- Wait to reach hang position
+	local startTime = tick()
+	while (rootPart.Position - hangPosition).Magnitude > 1 and tick() - startTime < 0.5 do
+		RunService.Heartbeat:Wait()
+	end
+
+	-- Pull up to stand position
+	alignPos.Position = standPosition
+	startTime = tick()
+	while (rootPart.Position - standPosition).Magnitude > 1.5 and tick() - startTime < 0.6 do
+		RunService.Heartbeat:Wait()
+	end
+
+	-- Cleanup
+	alignPos:Destroy()
+	alignOri:Destroy()
+	attachment:Destroy()
+
+	isGrappling = false
+	_G.IsGrappling = false
+	_G.GrappleCameraTilt = 0
+	humanoid.AutoRotate = true
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+
+	if isSprinting then
+		humanoid.WalkSpeed = SPRINT_SPEED
+	else
+		humanoid.WalkSpeed = WALK_SPEED
+	end
+
+	task.delay(GRAPPLE_COOLDOWN, function()
+		canGrapple = true
+	end)
 end
 
 -- Input

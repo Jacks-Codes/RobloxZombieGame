@@ -103,7 +103,7 @@ local ammoText = Instance.new("TextLabel")
 ammoText.Size = UDim2.new(1, -10, 0, 35)
 ammoText.Position = UDim2.new(0, 0, 0, 25)
 ammoText.BackgroundTransparency = 1
-ammoText.Text = "12"
+ammoText.Text = "--"
 ammoText.TextColor3 = Color3.new(1, 1, 1)
 ammoText.TextSize = 32
 ammoText.Font = Enum.Font.GothamBold
@@ -115,7 +115,7 @@ local reserveText = Instance.new("TextLabel")
 reserveText.Size = UDim2.new(1, -10, 0, 20)
 reserveText.Position = UDim2.new(0, 0, 0, 55)
 reserveText.BackgroundTransparency = 1
-reserveText.Text = "36"
+reserveText.Text = "--"
 reserveText.TextColor3 = Color3.new(0.7, 0.7, 0.7)
 reserveText.TextSize = 16
 reserveText.Font = Enum.Font.Gotham
@@ -384,8 +384,8 @@ local function resetUI()
 	currentWeaponType = "gun"
 
 	weaponLabel.Text = "PISTOL"
-	ammoText.Text = "12"
-	reserveText.Text = "36"
+	ammoText.Text = "--"
+	reserveText.Text = "--"
 	ammoText.TextColor3 = Color3.new(1, 1, 1)
 
 	updateWeaponSlots()
